@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Daily Reminder App</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 20px;
+      background: #f0f4f8;
+    }
+    h1 {
+      color: #2b6cb0;
+    }
+    .block {
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 8px;
+      background: #fff;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .completed {
+      text-decoration: line-through;
+      opacity: 0.6;
+    }
+    button {
+      padding: 5px 10px;
+      background: #2b6cb0;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+<h1>Daily Schedule Reminder</h1>
+<div id="schedule"></div>
+
+<script>
+const schedule = [
+  { label: "Night Work", time: "02:00" },
+  { label: "Sleep", time: "07:00" },
+  { label: "Exercise", time: "13:30" },
+  { label: "Day Work", time: "14:00" },
+  { label: "Free Time", time: "22:00" },
+  { label: "Nap / Prep", time: "23:30" }
+];
+
+function displaySchedule() {
+  const container = document.getElementById("schedule");
+  container.innerHTML = "";
+
+  schedule.forEach((block, index) => {
+    const done = localStorage.getItem(`block-${index}`) === "true";
+    const div = document.createElement("div");
+    div.className = "block" + (done ? " completed" : "");
+    div.innerHTML = `
+      <div>
+        <strong>${block.label}</strong><br/>
+        <small>${block.time}</small>
+      </div>
+      <button onclick="markDone(${index})">${done ? "Undo" : "Done"}</button>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function markDone(index) {
+  const key = `block-${index}`;
+  const current = localStorage.getItem(key) === "true";
+  localStorage.setItem(key, !current);
+  displaySchedule();
+}
+
+function notify(label) {
+  if (Notification.permission === "granted") {
+    new Notification(`Reminder: ${label} is starting soon!`);
+  }
+}
+
+function checkTime() {
+  const now = new Date();
+  const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+
+  schedule.forEach(block => {
+    const [blockHour, blockMin] = block.time.split(":").map(Number);
+    const reminderTime = new Date(now);
+    reminderTime.setHours(blockHour);
+    reminderTime.setMinutes(blockMin - 5); // Notify 5 mins before
+
+    if (
+      now.getHours() === reminderTime.getHours() &&
+      now.getMinutes() === reminderTime.getMinutes()
+    ) {
+      notify(block.label);
+    }
+  });
+}
+
+// Ask permission for notifications
+if (Notification.permission !== "granted") {
+  Notification.requestPermission();
+}
+
+displaySchedule();
+setInterval(checkTime, 60000); // Check every minute
+</script>
+</body>
+</html>
