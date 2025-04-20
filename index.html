@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Daily Reminder App</title>
-<link rel="manifest" href="manifest.json" />
-<meta name="theme-color" content="#4CAF50" />
+  <title>Daily Schedule Reminder</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#4CAF50" />
   <style>
     body {
       font-family: sans-serif;
@@ -36,6 +36,40 @@
       border: none;
       border-radius: 4px;
     }
+
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0, 0, 0, 0.4);
+    }
+
+    .modal-content {
+      background-color: #fefefe;
+      margin: 15% auto;
+      padding: 20px;
+      border: 1px solid #888;
+      width: 80%;
+    }
+
+    .close {
+      color: #aaa;
+      float: right;
+      font-size: 28px;
+      font-weight: bold;
+    }
+
+    .close:hover,
+    .close:focus {
+      color: black;
+      text-decoration: none;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -43,7 +77,16 @@
 <h1>Daily Schedule Reminder</h1>
 <div id="schedule"></div>
 
+<!-- Modal for Showing Reminder -->
+<div id="reminderModal" class="modal">
+  <div class="modal-content">
+    <span id="closeModal" class="close">&times;</span>
+    <p id="modalText"></p>
+  </div>
+</div>
+
 <script>
+// Schedule Data
 const schedule = [
   { label: "Night Work", time: "02:00" },
   { label: "Sleep", time: "07:00" },
@@ -53,6 +96,10 @@ const schedule = [
   { label: "Nap / Prep", time: "23:30" }
 ];
 
+// Initialize the single ringtone
+const alarmSound = new Audio('alarm.mp3');
+
+// Function to display the schedule
 function displaySchedule() {
   const container = document.getElementById("schedule");
   container.innerHTML = "";
@@ -67,11 +114,13 @@ function displaySchedule() {
         <small>${block.time}</small>
       </div>
       <button onclick="markDone(${index})">${done ? "Undo" : "Done"}</button>
+      <button onclick="editReminder(${index})">Edit</button>
     `;
     container.appendChild(div);
   });
 }
 
+// Function to mark a reminder as done
 function markDone(index) {
   const key = `block-${index}`;
   const current = localStorage.getItem(key) === "true";
@@ -79,12 +128,36 @@ function markDone(index) {
   displaySchedule();
 }
 
-function notify(label) {
-  if (Notification.permission === "granted") {
-    new Notification(`Reminder: ${label} is starting soon!`);
+// Function to edit task and time
+function editReminder(index) {
+  const newLabel = prompt("Edit task label:", schedule[index].label);
+  const newTime = prompt("Edit time:", schedule[index].time);
+
+  if (newLabel && newTime) {
+    schedule[index] = { label: newLabel, time: newTime };
+    localStorage.setItem(`block-${index}`, "false");  // Reset completed status
+    displaySchedule();
   }
 }
 
+// Function to trigger reminder notification and sound
+function triggerReminder(label) {
+  alarmSound.play(); // Play the ringtone
+  showModal(label); // Show the modal with the task info
+}
+
+// Show modal with reminder info
+function showModal(label) {
+  document.getElementById('modalText').textContent = `Reminder: ${label}`;
+  document.getElementById('reminderModal').style.display = 'block';
+}
+
+// Close modal when clicking on the 'X'
+document.getElementById('closeModal').onclick = function() {
+  document.getElementById('reminderModal').style.display = 'none';
+};
+
+// Check the time every minute to see if any task is due
 function checkTime() {
   const now = new Date();
   const currentTime = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
@@ -93,18 +166,18 @@ function checkTime() {
     const [blockHour, blockMin] = block.time.split(":").map(Number);
     const reminderTime = new Date(now);
     reminderTime.setHours(blockHour);
-    reminderTime.setMinutes(blockMin - 5); // Notify 5 mins before
+    reminderTime.setMinutes(blockMin - 5); // Notify 5 minutes before
 
     if (
       now.getHours() === reminderTime.getHours() &&
       now.getMinutes() === reminderTime.getMinutes()
     ) {
-      notify(block.label);
+      triggerReminder(block.label);  // Trigger reminder
     }
   });
 }
 
-// Ask permission for notifications
+// Request permission for notifications
 if (Notification.permission !== "granted") {
   Notification.requestPermission();
 }
@@ -112,7 +185,9 @@ if (Notification.permission !== "granted") {
 displaySchedule();
 setInterval(checkTime, 60000); // Check every minute
 </script>
+
 <script>
+  // Register service worker if available
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js')
       .then(() => console.log("Service Worker Registered!"));
