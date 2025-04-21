@@ -176,7 +176,6 @@ function checkTime() {
     }
   });
 }
-
 // Request permission for notifications
 if (Notification.permission !== "granted") {
   Notification.requestPermission();
@@ -193,6 +192,5 @@ setInterval(checkTime, 60000); // Check every minute
       .then(() => console.log("Service Worker Registered!"));
   }
 </script>
-
 </body>
 </html>
